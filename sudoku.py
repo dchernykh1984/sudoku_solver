@@ -146,11 +146,20 @@ class Sudoku:
             result += "\n"
         return result
 
+    def check_valid(self):
+        for row in self.grid:
+            if len(set(row)) != len(self.possible_values):
+                raise ValueError(f"Invalid row {row}")
+        for column_number in range(len(self.possible_values)):
+            if len(set([row[column_number] for row in self.grid])) != len(self.possible_values):
+                raise ValueError(f"Invalid row {row}")
+
     def check_solved(self):
         for row in self.grid:
             for cell in row:
                 if isinstance(cell, list):
                     return False
+        self.check_valid()
         return True
 
     def simplify_as_possible(self):
@@ -214,37 +223,52 @@ class Sudoku:
                     max_options = len(cell)
         return r + 1, c + 1, max_options
 
-    def print_diff(self, solution):
-        for symbol_solution, symbol_original in zip(str(solution), str(self)):
+    def print_diff(self, answer):
+        for symbol_solution, symbol_original in zip(str(answer), str(self)):
             if symbol_original == symbol_solution and symbol_solution != "\n":
                 print(bg.yellow + symbol_solution + bg.rs, end="")
             else:
                 print(symbol_solution, end="")
 
 
+# original_task = Sudoku(
+#     """3E C 9      5  8
+# F  6E  B  72 1A
+# G 9AC 82F  5 7BD
+#    7  D 8  9CF3
+# 1 A 47 D6G 8 59F
+# 6 ED     A54
+#  7F  AG 3 1CD 6
+# 82 G 69 B  F3 4C
+# D9  7E3 5F G C1
+#  3 8  A5  674DF
+# A C  2B  483   9
+# 4G E  1 A B 6
+#  6 FB5    9  3 1
+#     G 43D5C    2
+# 5   FD 9 B 1AEC
+#   G92   43 A""",
+#     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G"],
+#     4,
+# )
 original_task = Sudoku(
-    """3E C 9      5  8
-F  6E  B  72 1A
-G 9AC 82F  5 7BD
-   7  D 8  9CF3
-1 A 47 D6G 8 59F
-6 ED     A54
- 7F  AG 3 1CD 6
-82 G 69 B  F3 4C
-D9  7E3 5F G C1
- 3 8  A5  674DF
-A C  2B  483   9
-4G E  1 A B 6
- 6 FB5    9  3 1
-    G 43D5C    2
-5   FD 9 B 1AEC
-  G92   43 A""",
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G"],
-    4,
+    """    89
+      47
+6
+ 2 3
+ 4      9
+       68
+8 9 5
+   7  2
+5""",
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    3,
 )
 solution = deepcopy(original_task)
 original_task.simplify_representation()
 solutions = solution.all_possible_solutions()
+if not solutions:
+    raise IndexError("No solution found")
 if len(solutions) > 1:
     print(f"Found {len(solutions)} solutions. Merging...")
     solution.merge_solutions(solutions)
@@ -256,4 +280,4 @@ if len(solutions) > 1:
     )
 else:
     print("Difference is:")
-    original_task.print_diff(solution)
+    original_task.print_diff(solutions[0])
