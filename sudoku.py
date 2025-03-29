@@ -1,23 +1,27 @@
 from copy import deepcopy
-from sty import fg, bg
+
+from sty import bg
 
 
 class Sudoku:
     def __init__(
-        self,
-        string_representation: str,
-        possible_values: list,
-        number_of_subsquares: int,
+            self,
+            sudoku_matrix: str,
+            possible_values: list,
+            subsquare_width: int,
+            subsquare_height: int = None,
     ):
         self.simplifier_representation = False
         self.grid = []
-        self.number_of_subsquares = number_of_subsquares
+        self.subsquare_width = subsquare_width
+        self.subsquare_height = subsquare_height if subsquare_height else subsquare_width
         self.possible_values = possible_values
-        if len(possible_values) % self.number_of_subsquares:
+        self.square_size = self.subsquare_height * self.subsquare_width
+        if len(possible_values) != self.subsquare_width * self.subsquare_height:
             raise IndexError(
-                f"Possible values {possible_values} length {len(possible_values)} should be self.number_of_subsquares*n"
+                f"Possible values {possible_values} length {len(possible_values)} should equal {self.square_size=}"
             )
-        for row in string_representation.split("\n"):
+        for row in sudoku_matrix.split("\n"):
             self.grid.append(
                 [
                     symbol if symbol and symbol != " " else possible_values.copy()
@@ -40,10 +44,10 @@ class Sudoku:
                     list([possible_values.copy() for i in range(len(possible_values))])
                 )
 
-    def simplify_representation(self):
+    def simplify_representation(self)->None:
         self.simplifier_representation = True
 
-    def create_possible_branches(self):
+    def create_possible_branches(self)->list["Sudoku"]:
         minimal_cell_row = -1
         minimal_cell_column = -1
         minimal_length = 10
@@ -64,32 +68,32 @@ class Sudoku:
             result.append(proposed_decision)
         return result
 
-    def remove_value_from_cell(self, value, row, column):
+    def remove_value_from_cell(self, value, row:int, column:int)->None:
         if isinstance(value, str):
             if value in self.grid[row][column]:
                 self.grid[row][column].remove(value)
 
-    def filter_column(self, row_number, column):
+    def filter_column(self, row_number:int, column:int)->None:
         for row in self.grid:
             value = row[column]
             self.remove_value_from_cell(value, row_number, column)
 
-    def filter_row(self, row, column):
+    def filter_row(self, row:int, column:int)->None:
         for value in self.grid[row]:
             self.remove_value_from_cell(value, row, column)
 
-    def filter_subsquare(self, row, column):
-        subsquare_size = int(len(self.possible_values) / self.number_of_subsquares)
-        start_row_number = subsquare_size * (row // subsquare_size)
-        start_column_number = subsquare_size * (column // subsquare_size)
-        for row_counter in range(start_row_number, start_row_number + subsquare_size):
+    def filter_subsquare(self, row:int, column:int):
+        # subsquare_size = int(len(self.possible_values) / self.number_of_subsquares)
+        start_row_number = self.subsquare_height* (row // self.subsquare_height)
+        start_column_number = self.subsquare_width* (column // self.subsquare_width)
+        for row_counter in range(start_row_number, start_row_number + self.subsquare_height):
             for column_counter in range(
-                start_column_number, start_column_number + subsquare_size
+                    start_column_number, start_column_number + self.subsquare_width
             ):
                 value = self.grid[row_counter][column_counter]
                 self.remove_value_from_cell(value, row, column)
 
-    def calculate_all_possible_values(self):
+    def calculate_all_possible_values(self)->None:
         for row in range(len(self.possible_values)):
             for column in range(len(self.possible_values)):
                 cell_value = self.grid[row][column]
@@ -98,7 +102,7 @@ class Sudoku:
                     self.filter_row(row, column)
                     self.filter_subsquare(row, column)
 
-    def replace_options_by_values(self):
+    def replace_options_by_values(self)->int:
         number_of_replaced_items = 0
         for row_counter, row in enumerate(self.grid):
             for cell_counter, cell in enumerate(row):
@@ -112,19 +116,19 @@ class Sudoku:
         return number_of_replaced_items
 
     @staticmethod
-    def get_str_symbols(value, start, end):
+    def get_str_symbols(value:str|list, symbols_qty:int)->str:
         if isinstance(value, str):
-            return value * (end - start) + " "
+            return str(value * symbols_qty + " ")
         if isinstance(value, list):
-            result = ""
-            for counter in range(start, end):
+            result:str = ""
+            for counter in range(symbols_qty):
                 if counter < len(value):
                     result += value[counter]
                 else:
                     result += " "
-            return result + " "
+            return str(result + " ")
 
-    def __str__(self):
+    def __str__(self)->str:
         if self.check_solved() or self.simplifier_representation:
             return "\n".join(
                 [
@@ -133,16 +137,24 @@ class Sudoku:
                 ]
             )
         result = ""
+        max_symbols_qty = 0
         for row in self.grid:
-            subsquare_size = int(len(self.possible_values) / self.number_of_subsquares)
-            for counter in range(self.number_of_subsquares):
-                for grid_value in row:
-                    result += self.get_str_symbols(
-                        grid_value,
-                        counter * subsquare_size,
-                        counter * subsquare_size + subsquare_size,
-                    )
+            for cell in row:
+                cell_size = len(cell)   if isinstance(cell,list) else 1
+                if max_symbols_qty < cell_size:
+                    max_symbols_qty = cell_size
+
+        for y_counter in range(self.square_size):
+            if y_counter and y_counter % self.subsquare_height == 0:
                 result += "\n"
+            for x_counter in range(self.square_size):
+                cell_value = self.grid[y_counter][x_counter]
+                if x_counter and x_counter % self.subsquare_width == 0:
+                    result += "  "
+                result += self.get_str_symbols(
+                    value=cell_value,
+                    symbols_qty=     max_symbols_qty
+                )
             result += "\n"
         return result
 
@@ -154,7 +166,7 @@ class Sudoku:
             if len(set([row[column_number] for row in self.grid])) != len(self.possible_values):
                 raise ValueError(f"Invalid row {row}")
 
-    def check_solved(self):
+    def check_solved(self)->bool:
         for row in self.grid:
             for cell in row:
                 if isinstance(cell, list):
@@ -180,7 +192,7 @@ class Sudoku:
             except ValueError:
                 print("Branch failed - no problem")
 
-    def all_possible_solutions(self):
+    def all_possible_solutions(self)->list:
         self.simplify_as_possible()
         if self.check_solved():
             return [deepcopy(self)]
@@ -230,9 +242,74 @@ class Sudoku:
             else:
                 print(symbol_solution, end="")
 
-
+#23
 # original_task = Sudoku(
-#     """3E C 9      5  8
+#     sudoku_matrix="""123456
+# 456123
+# 6 5  4
+# 31
+# 56
+# """,
+#     possible_values=["1", "2", "3", "4", "5", "6"],
+#     subsquare_width=2, subsquare_height=3,
+# )
+
+
+# 43
+original_task = Sudoku(
+    sudoku_matrix="""A  C    9  7
+    4BA3
+  5  6C  4
+1    53    9
+ 8  C  A  4
+ 329    A8B
+ 43B    761
+ 2  7  6  C
+7    15    A
+  6  72  9
+    5369
+2  A    3  6""",
+    possible_values=["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"],
+    subsquare_width=4, subsquare_height=3,
+)
+
+# 43
+# original_task = Sudoku(
+#     sudoku_matrix="""A64C12859B37
+# 81974BA3C562
+# 3B5  6C  4
+# 1    53    9
+#  8  C  A  4
+#  329    A8B
+#  43B    761
+#  2  7  6  C
+# 7    15    A
+#   6  72  9
+#     5369
+# 2  A    3  6""",
+#     possible_values=["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"],
+#     subsquare_width=4, subsquare_height=3,
+# )
+
+
+# 33
+# original_task = Sudoku(
+#     sudoku_matrix="""    89
+#       47
+# 6
+#  2 3
+#  4      9
+#        68
+# 8 9 5
+#    7  2
+# 5""",
+#     possible_values=["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+#     subsquare_width=3,
+# )
+
+#44
+# original_task = Sudoku(
+#     sudoku_matrix="""3E C 9      5  8
 # F  6E  B  72 1A
 # G 9AC 82F  5 7BD
 #    7  D 8  9CF3
@@ -248,22 +325,10 @@ class Sudoku:
 #     G 43D5C    2
 # 5   FD 9 B 1AEC
 #   G92   43 A""",
-#     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G"],
-#     4,
+#     possible_values=["1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G"],
+#     subsquare_width=4,
 # )
-original_task = Sudoku(
-    """    89
-      47
-6
- 2 3
- 4      9
-       68
-8 9 5
-   7  2
-5""",
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-    3,
-)
+
 solution = deepcopy(original_task)
 original_task.simplify_representation()
 solutions = solution.all_possible_solutions()
